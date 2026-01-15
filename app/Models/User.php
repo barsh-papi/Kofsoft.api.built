@@ -1,0 +1,86 @@
+<?php
+
+namespace App\Models;
+
+// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Models\RefreshToken;
+use App\Models\Restaurant;
+use App\Notifications\ResetPassword;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
+
+class User extends Authenticatable
+{
+    /** @use HasFactory<\Database\Factories\UserFactory> */
+    use HasApiTokens, HasFactory, Notifiable;
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var list<string>
+     */
+    protected $fillable = [
+        'firstname',
+        'lastname',
+        'username',
+        'phone',
+        'email',
+        'password',
+        'trial_ends_at',
+        'plan',
+        'plan_status',
+        'planDuration'
+    ];
+
+    public function isTrialExpired()
+    {
+        return $this->trial_ends_at && Carbon::now()->greaterThan($this->trial_ends_at);
+    }
+
+    public function sendPasswordResetNotification($token)
+    {
+        $url = config('app.frontend_url') . '/reset-password/' . $token . '?email=' . $this->email;
+
+        $this->notify(new ResetPassword($token, $url));
+    }
+
+    public function Restaurant()
+    {
+        return $this->hasOne(Restaurant::class);
+    }
+    public function OrderView()
+    {
+        return $this->hasOne(OrderView::class);
+    }
+
+    public function refreshTokens()
+    {
+        return $this->hasMany(\App\Models\RefreshToken::class);
+    }
+
+    /**
+     * The attributes that should be hidden for serialization.
+     *
+     * @var list<string>
+     */
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
+        ];
+    }
+}
